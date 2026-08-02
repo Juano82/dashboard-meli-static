@@ -87,17 +87,22 @@ def armar_dashboard(df: pd.DataFrame, salida: str):
             ".content{display:block}"
             "h1{margin:0;font-size:38px;line-height:1.05;letter-spacing:-.04em;font-weight:700;color:#081120}"
             "p.sub{margin:8px 0 0 0;color:var(--muted);font-size:14px}"
-            ".hero{display:grid;grid-template-columns:1.35fr .95fr;gap:16px;margin:18px 0 18px 0;align-items:stretch}"
+            ".top-band{display:grid;grid-template-columns:1.55fr 1fr;gap:16px;align-items:stretch;margin:18px 0 18px 0}"
+            ".hero{display:grid;grid-template-columns:1.15fr 1fr 1fr;gap:12px;margin:0;align-items:stretch}"
             ".hero-card,.mini,.panel,.kpi,table{backdrop-filter:blur(10px)}"
             ".hero-card{border-radius:24px;padding:22px;border:1px solid #d7e3f3;background:linear-gradient(135deg,#ffffff 0,#eff6ff 100%);box-shadow:var(--shadow);position:relative;overflow:hidden}"
             ".hero-card:after{content:'';position:absolute;inset:auto -60px -70px auto;width:180px;height:180px;border-radius:50%;background:radial-gradient(circle,#38bdf822,#0000 70%)}"
             ".hero-card h3{margin:0;font-size:12px;color:#3b82f6;font-weight:700;letter-spacing:.12em;text-transform:uppercase}"
             ".hero-card .v{margin-top:10px;font-size:42px;font-weight:700;letter-spacing:-.05em;color:#0f172a}"
-            ".hero-mini{display:grid;grid-template-columns:1fr 1fr;gap:14px}"
-            ".mini{background:linear-gradient(180deg,#ffffff 0,#f8fbff 100%);border:1px solid #d8e3f1;border-radius:22px;padding:18px;box-shadow:var(--shadow)}"
+            ".mini{background:linear-gradient(180deg,#ffffff 0,#f8fbff 100%);border:1px solid #d8e3f1;border-radius:22px;padding:18px;box-shadow:var(--shadow);min-height:100%}"
             ".mini .k{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.1em}.mini .v{font-size:30px;font-weight:700;margin-top:8px;color:#0f172a}"
             ".panel{background:linear-gradient(180deg,#ffffff 0,#fbfdff 100%);border:1px solid var(--line);border-radius:22px;padding:18px;margin-bottom:16px;box-shadow:var(--shadow)}"
-            ".filters{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;align-items:end}"
+            ".filters-panel{margin-bottom:0;padding:0}"
+            ".filters-shell{display:grid;grid-template-columns:minmax(0,1fr) 160px;gap:18px;align-items:start;padding:18px}"
+            ".filters-fields{display:grid;grid-template-columns:1fr;gap:12px}"
+            ".filters-actions{display:grid;grid-template-columns:1fr;gap:12px;align-content:start;padding-top:28px}"
+            ".filters-actions .btn{width:100%}"
+            ".filters{display:grid;grid-template-columns:1fr;gap:0;align-items:stretch}"
             "label{font-size:12px;color:#475569;display:block;margin-bottom:6px;font-weight:600;letter-spacing:.02em}"
             "select,input{width:100%;border:1px solid #cbd5e1;background:#f8fafc;border-radius:14px;padding:12px 13px;font-size:14px;color:var(--ink);outline:none;transition:border-color .2s,box-shadow .2s,transform .2s}"
             "select:focus,input:focus{border-color:#60a5fa;box-shadow:0 0 0 4px #dbeafe;transform:translateY(-1px)}"
@@ -110,7 +115,7 @@ def armar_dashboard(df: pd.DataFrame, salida: str):
             ".kpi .t{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;font-weight:700}"
             ".kpi .v{font-size:28px;font-weight:700;margin-top:8px;color:#081120}"
             ".grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}"
-            "@media(max-width:1180px){body{padding:18px}.hero{grid-template-columns:1fr}.hero-mini{grid-template-columns:1fr 1fr}.grid{grid-template-columns:1fr}}"
+            "@media(max-width:1180px){body{padding:18px}.top-band{grid-template-columns:1fr}.hero{grid-template-columns:1fr 1fr 1fr}.grid{grid-template-columns:1fr}.filters-shell{grid-template-columns:1fr}.filters-actions{grid-template-columns:1fr 1fr 1fr;padding-top:0}}"
             ".chart{height:360px}"
             "table{width:100%;border-collapse:separate;border-spacing:0;font-size:13px;background:#fff;border:1px solid #d8e3f1;border-radius:16px;overflow:hidden}"
             "thead{background:linear-gradient(180deg,#f8fbff,#eef4fb)}"
@@ -130,17 +135,13 @@ def armar_dashboard(df: pd.DataFrame, salida: str):
         f.write("</head><body><div class='shell'><main class='content'>")
         f.write(f"<h1>Dashboard de stock</h1><p class='sub'>Panel limpio para revisar inventario, ordenar y filtrar rápido sin ruido visual</p>")
         f.write(
-            "<section class='hero'>"
+            "<section class='top-band'>"
+            "<div class='hero'>"
             f"<div class='hero-card'><h3>Vehículos cargados</h3><div class='v'>{len(df):,}</div></div>"
-            "<div class='hero-mini'>"
             f"<div class='mini'><div class='k'>Marcas</div><div class='v'>{total_marcas}</div></div>"
             f"<div class='mini'><div class='k'>Modelos</div><div class='v'>{total_modelos}</div></div>"
             "</div>"
-            "</section>"
-        )
-        f.write(
-            "<div class='panel'>"
-            "<div class='filters'>"
+            "<div class='panel filters-panel'><div class='filters-shell'><div class='filters-fields'>"
             "<div><label>Marca</label><select id='fMarca'><option value=''>Todas</option>"
         )
         for marca in marcas:
@@ -155,11 +156,12 @@ def armar_dashboard(df: pd.DataFrame, salida: str):
             f.write(f"<option>{anio}</option>")
         f.write("</select></div>")
         f.write(
+            "</div><div class='filters-actions'>"
             "<div><button class='btn' id='aplicar'>Aplicar filtros</button></div>"
             "<div><button class='btn' id='actualizar'>Actualizar datos</button></div>"
             "<div><button class='btn alt' id='limpiar'>Limpiar</button></div>"
             "<div><small id='syncInfo' style='color:#9ca8c9'>Fuente: snapshot local</small></div>"
-            "</div></div>"
+            "</div></div></div>"
         )
 
         f.write(
