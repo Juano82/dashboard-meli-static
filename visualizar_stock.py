@@ -1,0 +1,356 @@
+"""
+Dashboard HTML interactivo a partir del CSV que tira meli_vehiculos_scraper.py
+=================================================================================
+Uso:
+    python visualizar_stock.py stock.csv --salida dashboard.html
+
+Requisitos:
+    pip install pandas plotly
+
+Después de correrlo, abrí el .html generado con doble clic (se abre en el navegador,
+no hace falta internet ni instalar nada más). Los gráficos son interactivos: podés
+zoomear, sacar/poner marcas del gráfico clickeando en la leyenda, y pasar el mouse
+sobre un punto para ver el detalle del auto.
+"""
+
+import argparse
+import json
+from pathlib import Path
+import re
+
+import pandas as pd
+
+
+def limpiar_numero(valor):
+    """Convierte '22.600.000' o '44.500' (formato AR) a un int de Python."""
+    if pd.isna(valor):
+        return None
+    solo_digitos = re.sub(r"[^\d]", "", str(valor))
+    return int(solo_digitos) if solo_digitos else None
+
+
+def cargar(csv_path: str) -> pd.DataFrame:
+    df = pd.read_csv(
+        csv_path,
+        dtype={
+            "kms": "string",
+            "precio": "string",
+            "anio": "string",
+        },
+        keep_default_na=False,
+    )
+    df["precio_num"] = df["precio"].apply(limpiar_numero)
+    df["kms_num"] = df["kms"].apply(limpiar_numero)
+    df["anio_num"] = pd.to_numeric(df["anio"], errors="coerce")
+    return df
+
+
+def armar_dashboard(df: pd.DataFrame, salida: str):
+    tabla = df[["titulo", "marca", "modelo", "version", "anio", "kms", "precio", "link", "precio_num", "kms_num", "anio_num"]].copy()
+    tabla = tabla.fillna("")
+
+    marcas = sorted([m for m in tabla["marca"].dropna().unique() if str(m).strip()])
+    modelos = sorted([m for m in tabla["modelo"].dropna().unique() if str(m).strip()])
+    anios = sorted(
+        [int(a) for a in pd.to_numeric(tabla["anio_num"], errors="coerce").dropna().unique()],
+        reverse=True,
+    )
+    total_marcas = len(marcas)
+    total_modelos = len(modelos)
+
+    anios_validos = pd.to_numeric(df["anio_num"], errors="coerce").dropna()
+    kms_validos = pd.to_numeric(df["kms_num"], errors="coerce").dropna()
+
+    datos_json = tabla.to_dict(orient="records")
+    salida_path = Path(salida)
+    data_filename = f"{salida_path.stem}_data.json"
+    data_path = salida_path.with_name(data_filename)
+
+    with open(data_path, "w", encoding="utf-8") as data_file:
+        json.dump(datos_json, data_file, ensure_ascii=False)
+
+    with open(salida, "w", encoding="utf-8") as f:
+        f.write("<html><head><meta charset='utf-8'><title>Dashboard de stock</title>")
+        f.write("<link rel='preconnect' href='https://fonts.googleapis.com'>")
+        f.write("<link rel='preconnect' href='https://fonts.gstatic.com' crossorigin>")
+        f.write("<link href='https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap' rel='stylesheet'>")
+        f.write("<script src='https://cdn.plot.ly/plotly-2.35.2.min.js'></script>")
+        f.write(
+            "<style>"
+            ":root{--bg:#0b1020;--bg2:#121a31;--card:#171f39;--card2:#1b2444;--ink:#edf2ff;--muted:#9ca8c9;--accent:#2dd4ff;--accent2:#bb4dff;--line:#2a3764;}"
+            "*{box-sizing:border-box}"
+            "body{margin:0;padding:28px;background:radial-gradient(circle at 12% 12%,#2d2754 0,#0b1020 42%,#090e1a 100%);font-family:'Outfit','Segoe UI',Tahoma,sans-serif;color:var(--ink);position:relative;overflow-x:hidden}"
+            "body:before,body:after{content:'';position:fixed;border-radius:999px;filter:blur(1px);pointer-events:none;z-index:0}"
+            "body:before{width:420px;height:420px;left:-160px;top:-120px;background:radial-gradient(circle,#9f5dff55,#0000 65%)}"
+            "body:after{width:480px;height:480px;right:-200px;bottom:-180px;background:radial-gradient(circle,#2dd4ff33,#0000 65%)}"
+            ".shell{position:relative;z-index:1;max-width:1480px;margin:0 auto;display:block}"
+            ".content{display:block}"
+            "h1{margin:0;font-size:32px;letter-spacing:.2px;font-weight:700}"
+            "p.sub{margin:6px 0 0 0;color:var(--muted)}"
+            ".hero{display:grid;grid-template-columns:1.5fr 1fr;gap:12px;margin:14px 0 16px 0}"
+            ".hero-card{border-radius:14px;padding:14px 16px;border:1px solid #4d5f95;background:linear-gradient(120deg,#b055ff66,#2dd4ff55);box-shadow:0 12px 26px rgba(0,0,0,.3)}"
+            ".hero-card h3{margin:0;font-size:12px;color:#e8dbff;font-weight:500;letter-spacing:.3px}"
+            ".hero-card .v{margin-top:8px;font-size:30px;font-weight:700}"
+            ".hero-mini{display:grid;grid-template-columns:1fr 1fr;gap:12px}"
+            ".mini{background:linear-gradient(160deg,#1e2747,#161f39);border:1px solid #3c4b7b;border-radius:14px;padding:14px}"
+            ".mini .k{font-size:12px;color:#b7c4eb}.mini .v{font-size:24px;font-weight:700;margin-top:6px}"
+            ".panel{background:linear-gradient(180deg,var(--card2) 0,var(--card) 100%);border:1px solid var(--line);border-radius:16px;padding:16px;margin-bottom:16px;box-shadow:0 14px 34px rgba(0,0,0,.38)}"
+            ".filters{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px;align-items:end}"
+            "label{font-size:12px;color:var(--muted);display:block;margin-bottom:6px}"
+            "select,input{width:100%;border:1px solid #37446f;background:#0f1730;border-radius:10px;padding:10px;font-size:14px;color:var(--ink)}"
+            ".btn{padding:10px 12px;border:0;border-radius:10px;background:linear-gradient(90deg,var(--accent2),var(--accent));color:#fff;font-weight:600;cursor:pointer}"
+            ".btn.alt{background:#2a355b}"
+            ".kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin:12px 0 0 0}"
+            ".kpi{background:linear-gradient(140deg,#223059,#1a2344);border:1px solid #405189;border-radius:12px;padding:12px}"
+            ".kpi .t{font-size:12px;color:#b7c4eb}"
+            ".kpi .v{font-size:24px;font-weight:700;margin-top:2px;color:#fff}"
+            ".grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}"
+            "@media(max-width:1180px){.hero{grid-template-columns:1fr}.hero-mini{grid-template-columns:1fr 1fr}.grid{grid-template-columns:1fr}}"
+            ".chart{height:360px}"
+            "table{width:100%;border-collapse:collapse;font-size:13px;background:#0f1730;border-radius:12px;overflow:hidden}"
+            "thead{background:#202b4a}"
+            "th,td{padding:9px 8px;border-bottom:1px solid #27345a;text-align:left;vertical-align:top;color:#e7edff}"
+            "tbody tr:hover{background:#1b2744}"
+            ".th-sort{display:flex;align-items:center;gap:8px}"
+            ".sort-stack{display:inline-flex;flex-direction:column;line-height:1}"
+            ".sort-btn{border:0;background:transparent;cursor:pointer;color:#53e3ff;padding:0 2px;font-size:10px;height:10px}"
+            "a{color:#59d7ff;text-decoration:none}a:hover{text-decoration:underline}"
+            "</style>"
+        )
+        f.write("</head><body><div class='shell'><main class='content'>")
+        f.write(f"<h1>Dashboard de stock</h1><p class='sub'>Panel de publicaciones filtrables en tiempo real</p>")
+        f.write(
+            "<section class='hero'>"
+            f"<div class='hero-card'><h3>Vehículos cargados</h3><div class='v'>{len(df):,}</div></div>"
+            "<div class='hero-mini'>"
+            f"<div class='mini'><div class='k'>Marcas</div><div class='v'>{total_marcas}</div></div>"
+            f"<div class='mini'><div class='k'>Modelos</div><div class='v'>{total_modelos}</div></div>"
+            "</div>"
+            "</section>"
+        )
+        f.write(
+            "<div class='panel'>"
+            "<div class='filters'>"
+            "<div><label>Marca</label><select id='fMarca'><option value=''>Todas</option>"
+        )
+        for marca in marcas:
+            f.write(f"<option>{marca}</option>")
+        f.write("</select></div>")
+        f.write("<div><label>Modelo</label><select id='fModelo'><option value=''>Todos</option>")
+        for modelo in modelos:
+            f.write(f"<option>{modelo}</option>")
+        f.write("</select></div>")
+        f.write("<div><label>Año</label><select id='fAnio'><option value=''>Todos</option>")
+        for anio in anios:
+            f.write(f"<option>{anio}</option>")
+        f.write("</select></div>")
+        f.write(
+            "<div><button class='btn' id='aplicar'>Aplicar filtros</button></div>"
+            "<div><button class='btn' id='actualizar'>Actualizar datos</button></div>"
+            "<div><button class='btn alt' id='limpiar'>Limpiar</button></div>"
+            "<div><small id='syncInfo' style='color:#9ca8c9'>Fuente: snapshot local</small></div>"
+            "</div></div>"
+        )
+
+        f.write(
+            "<div class='kpis'>"
+            "<div class='kpi'><div class='t'>Vehículos filtrados</div><div class='v' id='kpiTotal'>0</div></div>"
+            "</div>"
+        )
+
+        f.write(
+            "<div class='grid'>"
+            "<div class='panel'><h3 style='margin:0 0 10px 0'>Unidades por marca</h3><div id='marcas'></div></div>"
+            "<div class='panel'><h3 style='margin:0 0 10px 0'>Unidades por año</h3><div id='anios'></div></div>"
+            "</div>"
+            "<div class='panel'><h3 style='margin-top:0'>Detalle filtrado</h3><div id='tabla'></div></div>"
+        )
+
+        f.write("<script>")
+        f.write(f"const EMBEDDED_DATA = {json.dumps(datos_json, ensure_ascii=False)};")
+        f.write(f"let DATA = [...EMBEDDED_DATA];")
+        f.write(f"const DATA_FILE = {json.dumps(data_filename, ensure_ascii=False)};")
+        f.write(
+            "const fmt = n => (n===null || n===undefined || n==='' || Number.isNaN(Number(n))) ? '-' : Number(n).toLocaleString('es-AR');"
+            "const money = n => (n===null || n===undefined || n==='' || Number.isNaN(Number(n))) ? '$ -' : '$ ' + Number(n).toLocaleString('es-AR');"
+            "const byId = id => document.getElementById(id);"
+            "const sortState = { col: '', dir: 'asc' };"
+
+            "function setSyncInfo(msg){"
+            "  const el = byId('syncInfo');"
+            "  if (el){ el.textContent = msg; }"
+            "}"
+
+            "async function actualizarDatos(showAlert = true){"
+            "  try {"
+            "    const res = await fetch(`${DATA_FILE}?t=${Date.now()}`, { cache: 'no-store' });"
+            "    if (!res.ok){ throw new Error('HTTP ' + res.status); }"
+            "    const nuevos = await res.json();"
+            "    if (!Array.isArray(nuevos)){ throw new Error('JSON inválido'); }"
+            "    DATA = nuevos;"
+            "    syncModelos();"
+            "    renderAll();"
+            "    const stamp = new Date().toLocaleString('es-AR');"
+            "    setSyncInfo(`Fuente: ${DATA_FILE} | actualizado ${stamp}`);"
+            "    if (showAlert){ alert('Datos actualizados correctamente.'); }"
+            "  } catch (err) {"
+            "    DATA = [...EMBEDDED_DATA];"
+            "    syncModelos();"
+            "    renderAll();"
+            "    setSyncInfo('Fuente: snapshot local (sin acceso a archivo externo)');"
+            "    if (showAlert){"
+            "      alert('No se pudo leer el archivo de datos externo. Si abrís el HTML con doble clic, usá un servidor local (python -m http.server) para actualizar sin regenerar.');"
+            "    }"
+            "  }"
+            "}"
+
+            "function syncModelos(){"
+            "  const marcaSel = byId('fMarca').value.trim().toLowerCase();"
+            "  const modeloSelect = byId('fModelo');"
+            "  const actual = modeloSelect.value;"
+            "  let modelos = [];"
+            "  if (!marcaSel){"
+            "    modelos = [...new Set(DATA.map(r => String(r.modelo || '').trim()).filter(Boolean))];"
+            "  } else {"
+            "    modelos = [...new Set(DATA.filter(r => String(r.marca || '').toLowerCase() === marcaSel).map(r => String(r.modelo || '').trim()).filter(Boolean))];"
+            "  }"
+            "  modelos.sort((a,b)=>a.localeCompare(b,'es',{sensitivity:'base'}));"
+            "  modeloSelect.innerHTML = '<option value=\"\">Todos</option>' + modelos.map(m => `<option>${m}</option>`).join('');"
+            "  if (actual && modelos.includes(actual)){ modeloSelect.value = actual; }"
+            "}"
+
+            "function filtrar(){"
+            "  const marca = byId('fMarca').value.trim().toLowerCase();"
+            "  const modelo = byId('fModelo').value.trim().toLowerCase();"
+            "  const anioSel = byId('fAnio').value.trim();"
+            "  return DATA.filter(r => {"
+            "    const rm = String(r.marca || '').toLowerCase();"
+            "    const rmo = String(r.modelo || '').toLowerCase();"
+            "    const ranio = String(r.anio || '').trim();"
+            "    const okMarca = !marca || rm === marca;"
+            "    const okModelo = !modelo || rmo === modelo;"
+            "    const okAnio = !anioSel || ranio === anioSel;"
+            "    return okMarca && okModelo && okAnio;"
+            "  });"
+            "}"
+
+            "function renderKPIs(rows){"
+            "  byId('kpiTotal').textContent = rows.length.toLocaleString('es-AR');"
+            "}"
+
+            "function renderMarcas(rows){"
+            "  const m = {};"
+            "  rows.forEach(r => { const k = (r.marca || 'Sin marca'); m[k] = (m[k] || 0) + 1; });"
+            "  const pares = Object.entries(m).sort((a,b) => b[1] - a[1]);"
+            "  let html = '<table><thead><tr><th>Marca</th><th>Unidades</th></tr></thead><tbody>';"
+            "  for (const [marca, cant] of pares){ html += `<tr><td>${marca}</td><td>${fmt(cant)}</td></tr>`; }"
+            "  if (!pares.length){ html += '<tr><td colspan=\"2\">Sin datos para los filtros actuales</td></tr>'; }"
+            "  html += '</tbody></table>';"
+            "  byId('marcas').innerHTML = html;"
+            "}"
+
+            "function renderAnios(rows){"
+            "  const m = {};"
+            "  rows.forEach(r => {"
+            "    const anio = Number(r.anio_num);"
+            "    const k = Number.isNaN(anio) ? 'Sin año' : String(anio);"
+            "    m[k] = (m[k] || 0) + 1;"
+            "  });"
+            "  const pares = Object.entries(m).sort((a,b) => {"
+            "    const an = Number(a[0]); const bn = Number(b[0]);"
+            "    const aNum = Number.isNaN(an) ? -Infinity : an;"
+            "    const bNum = Number.isNaN(bn) ? -Infinity : bn;"
+            "    return bNum - aNum;"
+            "  });"
+            "  let html = '<table><thead><tr><th>Año</th><th>Unidades</th></tr></thead><tbody>';"
+            "  for (const [anio, cant] of pares){ html += `<tr><td>${anio}</td><td>${fmt(cant)}</td></tr>`; }"
+            "  if (!pares.length){ html += '<tr><td colspan=\"2\">Sin datos para los filtros actuales</td></tr>'; }"
+            "  html += '</tbody></table>';"
+            "  byId('anios').innerHTML = html;"
+            "}"
+
+            "function renderTabla(rows){"
+            "  const sorted = [...rows];"
+            "  if (sortState.col){"
+            "    const factor = sortState.dir === 'desc' ? -1 : 1;"
+            "    sorted.sort((a, b) => {"
+            "    const textCmp = (x, y) => String(x || '').localeCompare(String(y || ''), 'es', {sensitivity:'base'});"
+            "    if (sortState.col === 'anio'){"
+            "      const av = Number(a.anio_num); const bv = Number(b.anio_num);"
+            "      const an = Number.isNaN(av) ? -Infinity : av;"
+            "      const bn = Number.isNaN(bv) ? -Infinity : bv;"
+            "      return (an - bn) * factor;"
+            "    }"
+            "    if (sortState.col === 'kms'){"
+            "      const av = Number(a.kms_num); const bv = Number(b.kms_num);"
+            "      const an = Number.isNaN(av) ? -Infinity : av;"
+            "      const bn = Number.isNaN(bv) ? -Infinity : bv;"
+            "      return (an - bn) * factor;"
+            "    }"
+            "    if (sortState.col === 'precio'){"
+            "      const av = Number(a.precio_num); const bv = Number(b.precio_num);"
+            "      const an = Number.isNaN(av) ? -Infinity : av;"
+            "      const bn = Number.isNaN(bv) ? -Infinity : bv;"
+            "      return (an - bn) * factor;"
+            "    }"
+            "    return textCmp(a[sortState.col], b[sortState.col]) * factor;"
+            "  });"
+            "  }"
+            "  const top = sorted.slice(0, 300);"
+            "  const h = (label, key) => `<span class='th-sort'><span>${label}</span><span class='sort-stack'><button class='sort-btn' data-sort='${key}' data-dir='asc' title='Orden ascendente'>▲</button><button class='sort-btn' data-sort='${key}' data-dir='desc' title='Orden descendente'>▼</button></span></span>`;"
+            "  let html = `<table><thead><tr><th>Título</th><th>${h('Marca','marca')}</th><th>${h('Modelo','modelo')}</th><th>${h('Año','anio')}</th><th>${h('KMs','kms')}</th><th>${h('Precio','precio')}</th><th>${h('Link','link')}</th></tr></thead><tbody>`;"
+            "  for (const r of top){"
+            "    const kmsTxt = Number.isNaN(Number(r.kms_num)) ? (r.kms || '-') : fmt(r.kms_num);"
+            "    const precioTxt = Number.isNaN(Number(r.precio_num)) ? '$ -' : money(r.precio_num);"
+            "    const linkTxt = r.link ? `<a href='${r.link}' target='_blank'>ver</a>` : '-';"
+            "    html += `<tr><td>${r.titulo || '-'}</td><td>${r.marca || '-'}</td><td>${r.modelo || '-'}</td><td>${r.anio || '-'}</td><td>${kmsTxt}</td><td>${precioTxt}</td><td>${linkTxt}</td></tr>`;"
+            "  }"
+            "  html += '</tbody></table>';"
+            "  if (sorted.length > top.length){ html += `<p style=\"color:#5c6f82;font-size:12px\">Mostrando ${top.length} de ${sorted.length} filas filtradas.</p>`; }"
+            "  byId('tabla').innerHTML = html;"
+            "}"
+
+            "function renderAll(){"
+            "  const rows = filtrar();"
+            "  renderKPIs(rows);"
+            "  renderMarcas(rows);"
+            "  renderAnios(rows);"
+            "  renderTabla(rows);"
+            "}"
+
+            "byId('aplicar').addEventListener('click', renderAll);"
+            "byId('actualizar').addEventListener('click', () => actualizarDatos(true));"
+            "byId('limpiar').addEventListener('click', () => {"
+            "  byId('fMarca').value = ''; byId('fModelo').value = ''; byId('fAnio').value = '';"
+            "  sortState.col = ''; sortState.dir = 'asc';"
+            "  syncModelos();"
+            "  renderAll();"
+            "});"
+            "byId('tabla').addEventListener('click', (ev) => {"
+            "  const target = ev.target;"
+            "  if (target && target.classList.contains('sort-btn')){"
+            "    sortState.col = target.dataset.sort || '';"
+            "    sortState.dir = target.dataset.dir || 'asc';"
+            "    renderAll();"
+            "  }"
+            "});"
+            "byId('fMarca').addEventListener('change', () => { syncModelos(); renderAll(); });"
+            "byId('fModelo').addEventListener('change', renderAll);"
+            "byId('fAnio').addEventListener('change', renderAll);"
+            "syncModelos();"
+            "renderAll();"
+            "actualizarDatos(false);"
+        )
+        f.write("</script></main></div></body></html>")
+
+    print(f"Dashboard guardado en {salida}")
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="Genera un dashboard HTML a partir del CSV del scraper de vehículos")
+    parser.add_argument("csv", help="Archivo CSV generado por meli_vehiculos_scraper.py")
+    parser.add_argument("--salida", default="dashboard.html", help="Nombre del archivo HTML de salida")
+    args = parser.parse_args()
+
+    df = cargar(args.csv)
+    armar_dashboard(df, args.salida)

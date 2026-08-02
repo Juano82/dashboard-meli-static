@@ -1,0 +1,48 @@
+name: Update Dashboard Data
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 * * * *"
+
+permissions:
+  contents: write
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run scraper + dashboard build
+        env:
+          MELI_URL: ${{ secrets.MELI_URL }}
+          MELI_MAX_PAGES: ${{ secrets.MELI_MAX_PAGES }}
+        run: |
+          if [ -z "$MELI_URL" ]; then
+            echo "Missing MELI_URL secret" >&2
+            exit 1
+          fi
+          PAGES=${MELI_MAX_PAGES:-20}
+          python actualizar_dashboard.py --url "$MELI_URL" --max-paginas "$PAGES" --csv stock.csv --html dashboard.html
+
+      - name: Commit changes
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add stock.csv dashboard.html dashboard_data.json
+          if git diff --cached --quiet; then
+            echo "No changes to commit"
+          else
+            git commit -m "chore: update dashboard data"
+            git push
+          fi

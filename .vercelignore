@@ -1,0 +1,14 @@
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.venv/
+venv/
+Temp/
+Python/
+freelancer_fin/
+freelancer_inicio/
+Gemini/
+Turnos medicos/
+turnos_salud/
+*.pdf
