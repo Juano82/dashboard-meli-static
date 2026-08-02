@@ -87,17 +87,17 @@ def armar_dashboard(df: pd.DataFrame, salida: str):
             ".content{display:block}"
             "h1{margin:0;font-size:38px;line-height:1.05;letter-spacing:-.04em;font-weight:700;color:#081120}"
             "p.sub{margin:8px 0 0 0;color:var(--muted);font-size:14px}"
-            ".hero{display:grid;grid-template-columns:1.6fr .9fr .9fr;gap:14px;margin:18px 0 18px 0;align-items:stretch}"
+            ".hero{display:grid;grid-template-columns:1.35fr .95fr;gap:16px;margin:18px 0 18px 0;align-items:stretch}"
             ".hero-card,.mini,.panel,.kpi,table{backdrop-filter:blur(10px)}"
             ".hero-card{border-radius:24px;padding:22px;border:1px solid #d7e3f3;background:linear-gradient(135deg,#ffffff 0,#eff6ff 100%);box-shadow:var(--shadow);position:relative;overflow:hidden}"
             ".hero-card:after{content:'';position:absolute;inset:auto -60px -70px auto;width:180px;height:180px;border-radius:50%;background:radial-gradient(circle,#38bdf822,#0000 70%)}"
             ".hero-card h3{margin:0;font-size:12px;color:#3b82f6;font-weight:700;letter-spacing:.12em;text-transform:uppercase}"
             ".hero-card .v{margin-top:10px;font-size:42px;font-weight:700;letter-spacing:-.05em;color:#0f172a}"
-            ".hero-mini{display:grid;grid-template-columns:1fr;gap:14px}"
+            ".hero-mini{display:grid;grid-template-columns:1fr 1fr;gap:14px}"
             ".mini{background:linear-gradient(180deg,#ffffff 0,#f8fbff 100%);border:1px solid #d8e3f1;border-radius:22px;padding:18px;box-shadow:var(--shadow)}"
             ".mini .k{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.1em}.mini .v{font-size:30px;font-weight:700;margin-top:8px;color:#0f172a}"
             ".panel{background:linear-gradient(180deg,#ffffff 0,#fbfdff 100%);border:1px solid var(--line);border-radius:22px;padding:18px;margin-bottom:16px;box-shadow:var(--shadow)}"
-            ".filters{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;align-items:end}"
+            ".filters{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;align-items:end}"
             "label{font-size:12px;color:#475569;display:block;margin-bottom:6px;font-weight:600;letter-spacing:.02em}"
             "select,input{width:100%;border:1px solid #cbd5e1;background:#f8fafc;border-radius:14px;padding:12px 13px;font-size:14px;color:var(--ink);outline:none;transition:border-color .2s,box-shadow .2s,transform .2s}"
             "select:focus,input:focus{border-color:#60a5fa;box-shadow:0 0 0 4px #dbeafe;transform:translateY(-1px)}"
@@ -109,18 +109,8 @@ def armar_dashboard(df: pd.DataFrame, salida: str):
             ".kpi{background:linear-gradient(180deg,#ffffff 0,#f8fbff 100%);border:1px solid #d8e3f1;border-radius:18px;padding:14px 16px;box-shadow:var(--shadow)}"
             ".kpi .t{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;font-weight:700}"
             ".kpi .v{font-size:28px;font-weight:700;margin-top:8px;color:#081120}"
-            ".grid{display:grid;grid-template-columns:1.4fr .8fr;gap:14px;align-items:start}"
-            ".stack{display:grid;gap:14px}"
-            ".mini-card-title{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}"
-            ".mini-card-title h3{margin:0;font-size:17px;letter-spacing:-.03em}"
-            ".mini-card-title span{color:var(--muted);font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.12em}"
-            ".side-stat{display:grid;grid-template-columns:1fr 1fr;gap:10px}"
-            ".side-box{border:1px solid #dbe5f2;background:#f8fbff;border-radius:16px;padding:12px}"
-            ".side-box .k{font-size:11px;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);font-weight:700}"
-            ".side-box .v{font-size:26px;font-weight:700;letter-spacing:-.04em;margin-top:6px}"
-            ".chart{height:340px}"
-            ".chart.tall{height:400px}"
-            "@media(max-width:1180px){body{padding:18px}.hero{grid-template-columns:1fr}.filters{grid-template-columns:1fr 1fr}.grid{grid-template-columns:1fr}}"
+            ".grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}"
+            "@media(max-width:1180px){body{padding:18px}.hero{grid-template-columns:1fr}.hero-mini{grid-template-columns:1fr 1fr}.grid{grid-template-columns:1fr}}"
             ".chart{height:360px}"
             "table{width:100%;border-collapse:separate;border-spacing:0;font-size:13px;background:#fff;border:1px solid #d8e3f1;border-radius:16px;overflow:hidden}"
             "thead{background:linear-gradient(180deg,#f8fbff,#eef4fb)}"
@@ -142,8 +132,10 @@ def armar_dashboard(df: pd.DataFrame, salida: str):
         f.write(
             "<section class='hero'>"
             f"<div class='hero-card'><h3>Vehículos cargados</h3><div class='v'>{len(df):,}</div></div>"
+            "<div class='hero-mini'>"
             f"<div class='mini'><div class='k'>Marcas</div><div class='v'>{total_marcas}</div></div>"
             f"<div class='mini'><div class='k'>Modelos</div><div class='v'>{total_modelos}</div></div>"
+            "</div>"
             "</section>"
         )
         f.write(
@@ -178,211 +170,192 @@ def armar_dashboard(df: pd.DataFrame, salida: str):
 
         f.write(
             "<div class='grid'>"
-            "<div class='stack'>"
-            "<div class='panel'>"
-            "<div class='mini-card-title'><h3>Unidades por marca</h3><span>Distribución principal</span></div>"
-            "<div id='chartMarcas' class='chart tall'></div>"
+            "<div class='panel'><h3 style='margin:0 0 10px 0'>Unidades por marca</h3><div id='marcas'></div></div>"
+            "<div class='panel'><h3 style='margin:0 0 10px 0'>Unidades por año</h3><div id='anios'></div></div>"
             "</div>"
-            "<div class='panel'>"
-            "<div class='mini-card-title'><h3>Detalle filtrado</h3><span>Listado ordenable</span></div>"
-            "<div id='tabla'></div>"
-            "</div>"
-            "</div>"
-            "<div class='stack'>"
-            "<div class='panel'>"
-            "<div class='mini-card-title'><h3>Unidades por año</h3><span>Evolución temporal</span></div>"
-            "<div id='chartAnios' class='chart'></div>"
-            "</div>"
-            "<div class='panel'>"
-            "<div class='mini-card-title'><h3>Resumen rápido</h3><span>Filtros activos</span></div>"
-            "<div class='side-stat'>"
-            f"<div class='side-box'><div class='k'>Vehículos</div><div class='v' id='sideTotal'>{len(df):,}</div></div>"
-            f"<div class='side-box'><div class='k'>Filtrados</div><div class='v' id='sideFiltered'>0</div></div>"
-            f"<div class='side-box'><div class='k'>Marcas</div><div class='v'>{total_marcas}</div></div>"
-            f"<div class='side-box'><div class='k'>Modelos</div><div class='v'>{total_modelos}</div></div>"
-            "</div>"
-            "</div>"
-            "</div>"
-            "</div>"
+            "<div class='panel'><h3 style='margin-top:0'>Detalle filtrado</h3><div id='tabla'></div></div>"
         )
 
-        f.write("<script>")
-        f.write(f"const EMBEDDED_DATA = {json.dumps(datos_json, ensure_ascii=False)};")
-        f.write(f"let DATA = [...EMBEDDED_DATA];")
-        f.write(f"const DATA_FILE = {json.dumps(data_filename, ensure_ascii=False)};")
-        f.write(
-            "const fmt = n => (n===null || n===undefined || n==='' || Number.isNaN(Number(n))) ? '-' : Number(n).toLocaleString('es-AR');"
-            "const money = n => (n===null || n===undefined || n==='' || Number.isNaN(Number(n))) ? '$ -' : '$ ' + Number(n).toLocaleString('es-AR');"
-            "const byId = id => document.getElementById(id);"
-            "const sortState = { col: '', dir: 'asc' };"
+        js = """
+<script>
+const EMBEDDED_DATA = __EMBEDDED_DATA__;
+let DATA = [...EMBEDDED_DATA];
+const DATA_FILE = __DATA_FILE__;
+const fmt = n => (n===null || n===undefined || n==='' || Number.isNaN(Number(n))) ? '-' : Number(n).toLocaleString('es-AR');
+const money = n => (n===null || n===undefined || n==='' || Number.isNaN(Number(n))) ? '$ -' : '$ ' + Number(n).toLocaleString('es-AR');
+const byId = id => document.getElementById(id);
+const sortState = { col: '', dir: 'asc' };
 
-            "function setSyncInfo(msg){"
-            "  const el = byId('syncInfo');"
-            "  if (el){ el.textContent = msg; }"
-            "}"
+function setSyncInfo(msg){
+    const el = byId('syncInfo');
+    if (el){ el.textContent = msg; }
+}
 
-            "async function actualizarDatos(showAlert = true){"
-            "  try {"
-            "    const res = await fetch(`${DATA_FILE}?t=${Date.now()}`, { cache: 'no-store' });"
-            "    if (!res.ok){ throw new Error('HTTP ' + res.status); }"
-            "    const nuevos = await res.json();"
-            "    if (!Array.isArray(nuevos)){ throw new Error('JSON inválido'); }"
-            "    DATA = nuevos;"
-            "    syncModelos();"
-            "    renderAll();"
-            "    const stamp = new Date().toLocaleString('es-AR');"
-            "    setSyncInfo(`Fuente: ${DATA_FILE} | actualizado ${stamp}`);"
-            "    if (showAlert){ alert('Datos actualizados correctamente.'); }"
-            "  } catch (err) {"
-            "    DATA = [...EMBEDDED_DATA];"
-            "    syncModelos();"
-            "    renderAll();"
-            "    setSyncInfo('Fuente: snapshot local (sin acceso a archivo externo)');"
-            "    if (showAlert){"
-            "      alert('No se pudo leer el archivo de datos externo. Si abrís el HTML con doble clic, usá un servidor local (python -m http.server) para actualizar sin regenerar.');"
-            "    }"
-            "  }"
-            "}"
+async function actualizarDatos(showAlert = true){
+    try {
+        const res = await fetch(`${DATA_FILE}?t=${Date.now()}`, { cache: 'no-store' });
+        if (!res.ok){ throw new Error('HTTP ' + res.status); }
+        const nuevos = await res.json();
+        if (!Array.isArray(nuevos)){ throw new Error('JSON inválido'); }
+        DATA = nuevos;
+        syncModelos();
+        renderAll();
+        const stamp = new Date().toLocaleString('es-AR');
+        setSyncInfo(`Fuente: ${DATA_FILE} | actualizado ${stamp}`);
+        if (showAlert){ alert('Datos actualizados correctamente.'); }
+    } catch (err) {
+        DATA = [...EMBEDDED_DATA];
+        syncModelos();
+        renderAll();
+        setSyncInfo('Fuente: snapshot local (sin acceso a archivo externo)');
+        if (showAlert){
+            alert('No se pudo leer el archivo de datos externo. Si abrís el HTML con doble clic, usá un servidor local (python -m http.server) para actualizar sin regenerar.');
+        }
+    }
+}
 
-            "function syncModelos(){"
-            "  const marcaSel = byId('fMarca').value.trim().toLowerCase();"
-            "  const modeloSelect = byId('fModelo');"
-            "  const actual = modeloSelect.value;"
-            "  let modelos = [];"
-            "  if (!marcaSel){"
-            "    modelos = [...new Set(DATA.map(r => String(r.modelo || '').trim()).filter(Boolean))];"
-            "  } else {"
-            "    modelos = [...new Set(DATA.filter(r => String(r.marca || '').toLowerCase() === marcaSel).map(r => String(r.modelo || '').trim()).filter(Boolean))];"
-            "  }"
-            "  modelos.sort((a,b)=>a.localeCompare(b,'es',{sensitivity:'base'}));"
-            "  modeloSelect.innerHTML = '<option value=\"\">Todos</option>' + modelos.map(m => `<option>${m}</option>`).join('');"
-            "  if (actual && modelos.includes(actual)){ modeloSelect.value = actual; }"
-            "}"
+function syncModelos(){
+    const marcaSel = byId('fMarca').value.trim().toLowerCase();
+    const modeloSelect = byId('fModelo');
+    const actual = modeloSelect.value;
+    let modelos = [];
+    if (!marcaSel){
+        modelos = [...new Set(DATA.map(r => String(r.modelo || '').trim()).filter(Boolean))];
+    } else {
+        modelos = [...new Set(DATA.filter(r => String(r.marca || '').toLowerCase() === marcaSel).map(r => String(r.modelo || '').trim()).filter(Boolean))];
+    }
+    modelos.sort((a,b)=>a.localeCompare(b,'es',{sensitivity:'base'}));
+    modeloSelect.innerHTML = '<option value="">Todos</option>' + modelos.map(m => `<option>${m}</option>`).join('');
+    if (actual && modelos.includes(actual)){ modeloSelect.value = actual; }
+}
 
-            "function filtrar(){"
-            "  const marca = byId('fMarca').value.trim().toLowerCase();"
-            "  const modelo = byId('fModelo').value.trim().toLowerCase();"
-            "  const anioSel = byId('fAnio').value.trim();"
-            "  return DATA.filter(r => {"
-            "    const rm = String(r.marca || '').toLowerCase();"
-            "    const rmo = String(r.modelo || '').toLowerCase();"
-            "    const ranio = String(r.anio || '').trim();"
-            "    const okMarca = !marca || rm === marca;"
-            "    const okModelo = !modelo || rmo === modelo;"
-            "    const okAnio = !anioSel || ranio === anioSel;"
-            "    return okMarca && okModelo && okAnio;"
-            "  });"
-            "}"
+function filtrar(){
+    const marca = byId('fMarca').value.trim().toLowerCase();
+    const modelo = byId('fModelo').value.trim().toLowerCase();
+    const anioSel = byId('fAnio').value.trim();
+    return DATA.filter(r => {
+        const rm = String(r.marca || '').toLowerCase();
+        const rmo = String(r.modelo || '').toLowerCase();
+        const ranio = String(r.anio || '').trim();
+        const okMarca = !marca || rm === marca;
+        const okModelo = !modelo || rmo === modelo;
+        const okAnio = !anioSel || ranio === anioSel;
+        return okMarca && okModelo && okAnio;
+    });
+}
 
-            "function renderKPIs(rows){"
-            "  byId('kpiTotal').textContent = rows.length.toLocaleString('es-AR');"
-            "}"
+function renderKPIs(rows){
+    byId('kpiTotal').textContent = rows.length.toLocaleString('es-AR');
+}
 
-            "function renderMarcas(rows){"
-            "  const m = {};"
-            "  rows.forEach(r => { const k = (r.marca || 'Sin marca'); m[k] = (m[k] || 0) + 1; });"
-            "  const pares = Object.entries(m).sort((a,b) => b[1] - a[1]);"
-            "  const labels = pares.map(p => p[0]);"
-            "  const values = pares.map(p => p[1]);"
-            "  const trace = {x: values, y: labels, type: 'bar', orientation: 'h', marker: {color: values.map((_, i) => i === 0 ? '#2563eb' : '#60a5fa')}, hovertemplate: '%{y}: %{x}<extra></extra>'};"
-            "  const layout = {margin: {l: 110, r: 10, t: 8, b: 30}, paper_bgcolor: 'rgba(0,0,0,0)', plot_bgcolor: 'rgba(0,0,0,0)', xaxis: {gridcolor: '#e5edf7', zeroline: false, title: ''}, yaxis: {automargin: true}, font: {family: 'Outfit, Segoe UI, sans-serif', color: '#0f172a'}, showlegend: false};"
-            "  Plotly.newPlot('chartMarcas', [trace], layout, {displayModeBar: false, responsive: true});"
-            "}"
+function renderMarcas(rows){
+    const m = {};
+    rows.forEach(r => { const k = (r.marca || 'Sin marca'); m[k] = (m[k] || 0) + 1; });
+    const pares = Object.entries(m).sort((a,b) => b[1] - a[1]);
+    let html = '<table><thead><tr><th>Marca</th><th>Unidades</th></tr></thead><tbody>';
+    for (const [marca, cant] of pares){ html += `<tr><td>${marca}</td><td>${fmt(cant)}</td></tr>`; }
+    if (!pares.length){ html += '<tr><td colspan="2">Sin datos para los filtros actuales</td></tr>'; }
+    html += '</tbody></table>';
+    byId('marcas').innerHTML = html;
+}
 
-            "function renderAnios(rows){"
-            "  const m = {};"
-            "  rows.forEach(r => {"
-            "    const anio = Number(r.anio_num);"
-            "    const k = Number.isNaN(anio) ? 'Sin año' : String(anio);"
-            "    m[k] = (m[k] || 0) + 1;"
-            "  });"
-            "  const pares = Object.entries(m).sort((a,b) => {"
-            "    const an = Number(a[0]); const bn = Number(b[0]);"
-            "    const aNum = Number.isNaN(an) ? -Infinity : an;"
-            "    const bNum = Number.isNaN(bn) ? -Infinity : bn;"
-            "    return bNum - aNum;"
-            "  });"
-            "  const labels = pares.map(p => p[0]);"
-            "  const values = pares.map(p => p[1]);"
-            "  const trace = {x: labels, y: values, type: 'bar', marker: {color: '#0ea5e9'}, hovertemplate: '%{x}: %{y}<extra></extra>'};"
-            "  const layout = {margin: {l: 40, r: 10, t: 8, b: 40}, paper_bgcolor: 'rgba(0,0,0,0)', plot_bgcolor: 'rgba(0,0,0,0)', xaxis: {gridcolor: '#e5edf7', zeroline: false}, yaxis: {gridcolor: '#e5edf7', zeroline: false}, font: {family: 'Outfit, Segoe UI, sans-serif', color: '#0f172a'}, showlegend: false};"
-            "  Plotly.newPlot('chartAnios', [trace], layout, {displayModeBar: false, responsive: true});"
-            "}"
+function renderAnios(rows){
+    const m = {};
+    rows.forEach(r => {
+        const anio = Number(r.anio_num);
+        const k = Number.isNaN(anio) ? 'Sin año' : String(anio);
+        m[k] = (m[k] || 0) + 1;
+    });
+    const pares = Object.entries(m).sort((a,b) => {
+        const an = Number(a[0]); const bn = Number(b[0]);
+        const aNum = Number.isNaN(an) ? -Infinity : an;
+        const bNum = Number.isNaN(bn) ? -Infinity : bn;
+        return bNum - aNum;
+    });
+    let html = '<table><thead><tr><th>Año</th><th>Unidades</th></tr></thead><tbody>';
+    for (const [anio, cant] of pares){ html += `<tr><td>${anio}</td><td>${fmt(cant)}</td></tr>`; }
+    if (!pares.length){ html += '<tr><td colspan="2">Sin datos para los filtros actuales</td></tr>'; }
+    html += '</tbody></table>';
+    byId('anios').innerHTML = html;
+}
 
-            "function renderTabla(rows){"
-            "  const sorted = [...rows];"
-            "  if (sortState.col){"
-            "    const factor = sortState.dir === 'desc' ? -1 : 1;"
-            "    sorted.sort((a, b) => {"
-            "    const textCmp = (x, y) => String(x || '').localeCompare(String(y || ''), 'es', {sensitivity:'base'});"
-            "    if (sortState.col === 'anio'){"
-            "      const av = Number(a.anio_num); const bv = Number(b.anio_num);"
-            "      const an = Number.isNaN(av) ? -Infinity : av;"
-            "      const bn = Number.isNaN(bv) ? -Infinity : bv;"
-            "      return (an - bn) * factor;"
-            "    }"
-            "    if (sortState.col === 'kms'){"
-            "      const av = Number(a.kms_num); const bv = Number(b.kms_num);"
-            "      const an = Number.isNaN(av) ? -Infinity : av;"
-            "      const bn = Number.isNaN(bv) ? -Infinity : bv;"
-            "      return (an - bn) * factor;"
-            "    }"
-            "    if (sortState.col === 'precio'){"
-            "      const av = Number(a.precio_num); const bv = Number(b.precio_num);"
-            "      const an = Number.isNaN(av) ? -Infinity : av;"
-            "      const bn = Number.isNaN(bv) ? -Infinity : bv;"
-            "      return (an - bn) * factor;"
-            "    }"
-            "    return textCmp(a[sortState.col], b[sortState.col]) * factor;"
-            "  });"
-            "  }"
-            "  const top = sorted.slice(0, 300);"
-            "  const h = (label, key) => `<span class='th-sort'><span>${label}</span><span class='sort-stack'><button class='sort-btn' data-sort='${key}' data-dir='asc' title='Orden ascendente'>▲</button><button class='sort-btn' data-sort='${key}' data-dir='desc' title='Orden descendente'>▼</button></span></span>`;"
-            "  let html = `<table><thead><tr><th>Título</th><th>${h('Marca','marca')}</th><th>${h('Modelo','modelo')}</th><th>${h('Año','anio')}</th><th>${h('KMs','kms')}</th><th>${h('Precio','precio')}</th><th>${h('Link','link')}</th></tr></thead><tbody>`;"
-            "  for (const r of top){"
-            "    const kmsTxt = Number.isNaN(Number(r.kms_num)) ? (r.kms || '-') : fmt(r.kms_num);"
-            "    const precioTxt = Number.isNaN(Number(r.precio_num)) ? '$ -' : money(r.precio_num);"
-            "    const linkTxt = r.link ? `<a href='${r.link}' target='_blank'>ver</a>` : '-';"
-            "    html += `<tr><td>${r.titulo || '-'}</td><td>${r.marca || '-'}</td><td>${r.modelo || '-'}</td><td>${r.anio || '-'}</td><td>${kmsTxt}</td><td>${precioTxt}</td><td>${linkTxt}</td></tr>`;"
-            "  }"
-            "  html += '</tbody></table>';"
-            "  if (sorted.length > top.length){ html += `<p style=\"color:#5c6f82;font-size:12px\">Mostrando ${top.length} de ${sorted.length} filas filtradas.</p>`; }"
-            "  byId('tabla').innerHTML = html;"
-            "}"
+function renderTabla(rows){
+    const sorted = [...rows];
+    if (sortState.col){
+        const factor = sortState.dir === 'desc' ? -1 : 1;
+        sorted.sort((a, b) => {
+            const textCmp = (x, y) => String(x || '').localeCompare(String(y || ''), 'es', {sensitivity:'base'});
+            if (sortState.col === 'anio'){
+                const av = Number(a.anio_num); const bv = Number(b.anio_num);
+                const an = Number.isNaN(av) ? -Infinity : av;
+                const bn = Number.isNaN(bv) ? -Infinity : bv;
+                return (an - bn) * factor;
+            }
+            if (sortState.col === 'kms'){
+                const av = Number(a.kms_num); const bv = Number(b.kms_num);
+                const an = Number.isNaN(av) ? -Infinity : av;
+                const bn = Number.isNaN(bv) ? -Infinity : bv;
+                return (an - bn) * factor;
+            }
+            if (sortState.col === 'precio'){
+                const av = Number(a.precio_num); const bv = Number(b.precio_num);
+                const an = Number.isNaN(av) ? -Infinity : av;
+                const bn = Number.isNaN(bv) ? -Infinity : bv;
+                return (an - bn) * factor;
+            }
+            return textCmp(a[sortState.col], b[sortState.col]) * factor;
+        });
+    }
+    const top = sorted.slice(0, 300);
+    const h = (label, key) => `<span class='th-sort'><span>${label}</span><span class='sort-stack'><button class='sort-btn' data-sort='${key}' data-dir='asc' title='Orden ascendente'>▲</button><button class='sort-btn' data-sort='${key}' data-dir='desc' title='Orden descendente'>▼</button></span></span>`;
+    let html = `<table><thead><tr><th>Título</th><th>${h('Marca','marca')}</th><th>${h('Modelo','modelo')}</th><th>${h('Año','anio')}</th><th>${h('KMs','kms')}</th><th>${h('Precio','precio')}</th><th>${h('Link','link')}</th></tr></thead><tbody>`;
+    for (const r of top){
+        const kmsTxt = Number.isNaN(Number(r.kms_num)) ? (r.kms || '-') : fmt(r.kms_num);
+        const precioTxt = Number.isNaN(Number(r.precio_num)) ? '$ -' : money(r.precio_num);
+        const linkTxt = r.link ? `<a href='${r.link}' target='_blank'>ver</a>` : '-';
+        html += `<tr><td>${r.titulo || '-'}</td><td>${r.marca || '-'}</td><td>${r.modelo || '-'}</td><td>${r.anio || '-'}</td><td>${kmsTxt}</td><td>${precioTxt}</td><td>${linkTxt}</td></tr>`;
+    }
+    html += '</tbody></table>';
+    if (sorted.length > top.length){ html += `<p style="color:#5c6f82;font-size:12px">Mostrando ${top.length} de ${sorted.length} filas filtradas.</p>`; }
+    byId('tabla').innerHTML = html;
+}
 
-            "function renderAll(){"
-            "  const rows = filtrar();"
-            "  renderKPIs(rows);"
-            "  renderMarcas(rows);"
-            "  renderAnios(rows);"
-            "  renderTabla(rows);"
-            "  byId('sideFiltered').textContent = rows.length.toLocaleString('es-AR');"
-            "}"
+function renderAll(){
+    const rows = filtrar();
+    renderKPIs(rows);
+    renderMarcas(rows);
+    renderAnios(rows);
+    renderTabla(rows);
+}
 
-            "byId('aplicar').addEventListener('click', renderAll);"
-            "byId('actualizar').addEventListener('click', () => actualizarDatos(true));"
-            "byId('limpiar').addEventListener('click', () => {"
-            "  byId('fMarca').value = ''; byId('fModelo').value = ''; byId('fAnio').value = '';"
-            "  sortState.col = ''; sortState.dir = 'asc';"
-            "  syncModelos();"
-            "  renderAll();"
-            "});"
-            "byId('tabla').addEventListener('click', (ev) => {"
-            "  const target = ev.target;"
-            "  if (target && target.classList.contains('sort-btn')){"
-            "    sortState.col = target.dataset.sort || '';"
-            "    sortState.dir = target.dataset.dir || 'asc';"
-            "    renderAll();"
-            "  }"
-            "});"
-            "byId('fMarca').addEventListener('change', () => { syncModelos(); renderAll(); });"
-            "byId('fModelo').addEventListener('change', renderAll);"
-            "byId('fAnio').addEventListener('change', renderAll);"
-            "syncModelos();"
-            "renderAll();"
-            "actualizarDatos(false);"
-        )
-        f.write("</script></main></div></body></html>")
+byId('aplicar').addEventListener('click', renderAll);
+byId('actualizar').addEventListener('click', () => actualizarDatos(true));
+byId('limpiar').addEventListener('click', () => {
+    byId('fMarca').value = ''; byId('fModelo').value = ''; byId('fAnio').value = '';
+    sortState.col = ''; sortState.dir = 'asc';
+    syncModelos();
+    renderAll();
+});
+byId('tabla').addEventListener('click', (ev) => {
+    const target = ev.target;
+    if (target && target.classList.contains('sort-btn')){
+        sortState.col = target.dataset.sort || '';
+        sortState.dir = target.dataset.dir || 'asc';
+        renderAll();
+    }
+});
+byId('fMarca').addEventListener('change', () => { syncModelos(); renderAll(); });
+byId('fModelo').addEventListener('change', renderAll);
+byId('fAnio').addEventListener('change', renderAll);
+syncModelos();
+renderAll();
+actualizarDatos(false);
+</script>
+"""
+        js = js.replace("__EMBEDDED_DATA__", json.dumps(datos_json, ensure_ascii=False))
+        js = js.replace("__DATA_FILE__", json.dumps(data_filename, ensure_ascii=False))
+        f.write(js)
+        f.write("</main></div></body></html>")
 
     print(f"Dashboard guardado en {salida}")
 
