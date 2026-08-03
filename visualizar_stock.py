@@ -54,6 +54,7 @@ def render_top_section(total_vehiculos, total_marcas, total_modelos, marcas, mod
         <div class='hero-card'><h3>Vehículos cargados</h3><div class='v'>{{ total_vehiculos }}</div></div>
         <div class='mini'><div class='k'>Marcas</div><div class='v'>{{ total_marcas }}</div></div>
         <div class='mini'><div class='k'>Modelos</div><div class='v'>{{ total_modelos }}</div></div>
+    <div class='mini'><div class='k'>Vehículos filtrados</div><div class='v' id='kpiTotal'>0</div></div>
     </div>
     <div class='panel filters-panel'>
         <div class='filters-shell'>
@@ -125,13 +126,13 @@ def armar_dashboard(df: pd.DataFrame, salida: str):
             ".content{display:block}"
             "h1{margin:0;font-size:38px;line-height:1.05;letter-spacing:-.04em;font-weight:700;color:#081120}"
             "p.sub{margin:8px 0 0 0;color:var(--muted);font-size:14px}"
-            ".top-band{display:grid;grid-template-columns:1.65fr .95fr;gap:14px;align-items:start;margin:18px 0 18px 0}"
-            ".hero{display:grid;grid-template-columns:1.1fr 1fr 1fr;gap:12px;margin:0;align-items:stretch}"
+            ".top-band{display:grid;grid-template-columns:1.9fr .95fr;gap:14px;align-items:start;margin:18px 0 18px 0}"
+            ".hero{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin:0;align-items:stretch}"
             ".hero-card,.mini,.panel,.kpi,table{backdrop-filter:blur(10px)}"
-            ".hero-card{border-radius:22px;padding:18px 18px 20px;border:1px solid #d7e3f3;background:linear-gradient(135deg,#ffffff 0,#eff6ff 100%);box-shadow:var(--shadow);position:relative;overflow:hidden;min-height:160px}"
+            ".hero-card{border-radius:22px;padding:18px;border:1px solid #d7e3f3;background:linear-gradient(135deg,#ffffff 0,#eff6ff 100%);box-shadow:var(--shadow);position:relative;overflow:hidden;min-height:160px}"
             ".hero-card:after{content:'';position:absolute;inset:auto -60px -70px auto;width:180px;height:180px;border-radius:50%;background:radial-gradient(circle,#38bdf822,#0000 70%)}"
             ".hero-card h3{margin:0;font-size:12px;color:#3b82f6;font-weight:700;letter-spacing:.12em;text-transform:uppercase}"
-            ".hero-card .v{margin-top:8px;font-size:clamp(44px,4.8vw,60px);font-weight:700;line-height:.92;letter-spacing:-.06em;color:#0f172a}"
+            ".hero-card .v{margin-top:8px;font-size:clamp(40px,4.4vw,56px);font-weight:700;line-height:.92;letter-spacing:-.06em;color:#0f172a}"
             ".mini{background:linear-gradient(180deg,#ffffff 0,#f8fbff 100%);border:1px solid #d8e3f1;border-radius:22px;padding:18px;box-shadow:var(--shadow);min-height:160px}"
             ".mini .k{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.1em}.mini .v{font-size:clamp(40px,4.2vw,54px);font-weight:700;line-height:.92;margin-top:8px;color:#0f172a}"
             ".panel{background:linear-gradient(180deg,#ffffff 0,#fbfdff 100%);border:1px solid var(--line);border-radius:22px;padding:18px;margin-bottom:16px;box-shadow:var(--shadow)}"
@@ -153,7 +154,7 @@ def armar_dashboard(df: pd.DataFrame, salida: str):
             ".kpi .t{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;font-weight:700}"
             ".kpi .v{font-size:clamp(34px,4vw,44px);font-weight:700;line-height:.92;margin-top:8px;color:#081120}"
             ".grid{display:grid;grid-template-columns:1.35fr .65fr;gap:14px;align-items:start}"
-            "@media(max-width:1180px){body{padding:18px}.top-band{grid-template-columns:1fr}.hero{grid-template-columns:1fr 1fr 1fr}.grid{grid-template-columns:1fr}.filters-shell{grid-template-columns:1fr}.filters-actions{grid-template-columns:1fr 1fr 1fr;padding-top:0}.hero-card,.mini,.kpi{min-height:auto}}"
+            "@media(max-width:1180px){body{padding:18px}.top-band{grid-template-columns:1fr}.hero{grid-template-columns:1fr 1fr}.grid{grid-template-columns:1fr}.filters-shell{grid-template-columns:1fr}.filters-actions{grid-template-columns:1fr 1fr 1fr;padding-top:0}.hero-card,.mini,.kpi{min-height:auto}}"
             ".chart{height:360px}"
             "table{width:100%;border-collapse:separate;border-spacing:0;font-size:13px;background:#fff;border:1px solid #d8e3f1;border-radius:16px;overflow:hidden}"
             "thead{background:linear-gradient(180deg,#f8fbff,#eef4fb)}"
@@ -174,12 +175,6 @@ def armar_dashboard(df: pd.DataFrame, salida: str):
         f.write("</head><body><div class='shell'><main class='content'>")
         f.write(f"<h1>Dashboard de stock</h1><p class='sub'>Panel limpio para revisar inventario, ordenar y filtrar rápido sin ruido visual</p>")
         f.write(render_top_section(f"{len(df):,}", total_marcas, total_modelos, marcas, modelos, anios))
-
-        f.write(
-            "<div class='kpis'>"
-            "<div class='kpi'><div class='t'>Vehículos filtrados</div><div class='v' id='kpiTotal'>0</div></div>"
-            "</div>"
-        )
 
         f.write(
             "<div class='grid'>"
