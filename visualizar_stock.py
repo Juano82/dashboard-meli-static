@@ -1,11 +1,12 @@
 """
-Dashboard HTML interactivo a partir del CSV que tira meli_vehiculos_scraper.py
-=================================================================================
+Dashboard HTML interactivo a partir de CSV o PDF
+================================================
 Uso:
     python visualizar_stock.py stock.csv --salida dashboard.html
+    python visualizar_stock.py lista_precios.pdf --salida dashboard.html
 
 Requisitos:
-    pip install pandas plotly
+    pip install pandas plotly jinja2 pdfplumber
 
 Después de correrlo, abrí el .html generado con doble clic (se abre en el navegador,
 no hace falta internet ni instalar nada más). Los gráficos son interactivos: podés
@@ -30,7 +31,60 @@ def limpiar_numero(valor):
     return int(solo_digitos) if solo_digitos else None
 
 
-def cargar(csv_path: str) -> pd.DataFrame:
+def _normalizar_columna(nombre: str) -> str:
+    txt = re.sub(r"[^a-z0-9]", "", str(nombre or "").strip().lower())
+    alias = {
+        "titulo": "titulo",
+        "vehiculo": "titulo",
+        "descripcion": "titulo",
+        "marca": "marca",
+        "modelo": "modelo",
+        "version": "version",
+        "anio": "anio",
+        "ano": "anio",
+        "kms": "kms",
+        "km": "kms",
+        "kilometros": "kms",
+        "precio": "precio",
+        "valor": "precio",
+        "link": "link",
+        "url": "link",
+    }
+    return alias.get(txt, txt)
+
+
+def _postprocesar(df: pd.DataFrame) -> pd.DataFrame:
+    for col in ["titulo", "marca", "modelo", "version", "anio", "kms", "precio", "link"]:
+        if col not in df.columns:
+            df[col] = ""
+
+    df["titulo"] = df["titulo"].astype("string").fillna("").str.strip()
+    df["marca"] = df["marca"].astype("string").fillna("").str.strip()
+    df["modelo"] = df["modelo"].astype("string").fillna("").str.strip()
+    df["version"] = df["version"].astype("string").fillna("").str.strip()
+    df["anio"] = df["anio"].astype("string").fillna("").str.strip()
+    df["kms"] = df["kms"].astype("string").fillna("").str.strip()
+    df["precio"] = df["precio"].astype("string").fillna("").str.strip()
+    df["link"] = df["link"].astype("string").fillna("").str.strip()
+
+    df["precio_num"] = df["precio"].apply(limpiar_numero)
+    df["kms_num"] = df["kms"].apply(limpiar_numero)
+    df["anio_num"] = pd.to_numeric(df["anio"], errors="coerce")
+
+    # Si falta título, compone uno mínimo para mostrar en la tabla.
+    sin_titulo = df["titulo"].eq("")
+    df.loc[sin_titulo, "titulo"] = (
+        df.loc[sin_titulo, "marca"].str.strip()
+        + " "
+        + df.loc[sin_titulo, "modelo"].str.strip()
+        + " "
+        + df.loc[sin_titulo, "version"].str.strip()
+    ).str.strip()
+
+    return df
+
+
+def cargar_csv(csv_path: str) -> pd.DataFrame:
     df = pd.read_csv(
         csv_path,
         dtype={
@@ -40,10 +94,118 @@ def cargar(csv_path: str) -> pd.DataFrame:
         },
         keep_default_na=False,
     )
-    df["precio_num"] = df["precio"].apply(limpiar_numero)
-    df["kms_num"] = df["kms"].apply(limpiar_numero)
-    df["anio_num"] = pd.to_numeric(df["anio"], errors="coerce")
-    return df
+    return _postprocesar(df)
+
+
+def cargar_pdf(pdf_path: str) -> pd.DataFrame:
+    try:
+        from pypdf import PdfReader
+    except Exception as exc:
+        raise RuntimeError(
+            "Para leer PDF falta instalar pypdf. Ejecuta: pip install pypdf"
+        ) from exc
+
+    def es_modelo_probable(linea: str) -> bool:
+        s = linea.strip()
+        if not s or "u$s" in s.lower() or "0km" in s.lower():
+            return False
+        if re.search(r"\d{1,3}\.\d{3},\d{2}", s):
+            return False
+        if "(" in s or ")" in s:
+            return False
+        if len(s.split()) > 4:
+            return False
+        # Los modelos suelen ser cortos y sin detalles mecánicos.
+        if re.search(r"\b(cv|hp|tbi|tsi|tdi|hdi|at|mt|awd|fwd|turbo|biturbo)\b", s, flags=re.IGNORECASE):
+            return False
+        return True
+
+    rows = []
+    marca_actual = ""
+    modelo_actual = ""
+    anios_actuales = []
+    version_buffer = []
+
+    reader = PdfReader(pdf_path)
+    for page in reader.pages:
+        texto = page.extract_text() or ""
+        lineas = [ln.strip() for ln in texto.splitlines() if ln.strip()]
+
+        for linea in lineas:
+            if linea.lower().startswith("guía oficial de precios") or linea.lower().startswith("guia oficial de precios"):
+                continue
+
+            m_brand = re.match(r"^([A-Z0-9ÁÉÍÓÚÜÑ/& .-]+)\s+0km\b", linea)
+            if m_brand:
+                marca_actual = m_brand.group(1).strip().title()
+                anios = re.findall(r"\b20\d{2}\b", linea)
+                anios_actuales = [int(a) for a in anios]
+                modelo_actual = ""
+                version_buffer = []
+                continue
+
+            if not marca_actual or not anios_actuales:
+                continue
+
+            idx_usd = linea.lower().find("u$s")
+            if idx_usd != -1:
+                prefijo = linea[:idx_usd].strip()
+                cola = linea[idx_usd + 3 :].strip()
+
+                partes_version = [p for p in version_buffer if p]
+                if prefijo:
+                    partes_version.append(prefijo)
+                version = " ".join(partes_version).strip()
+                version_buffer = []
+
+                if not version:
+                    continue
+
+                precios_tokens = re.findall(r"\d{1,3}(?:\.\d{3})*,\d{2}|-", cola)
+                if not precios_tokens:
+                    continue
+
+                limite = min(len(anios_actuales), len(precios_tokens))
+                for i in range(limite):
+                    token = precios_tokens[i].strip()
+                    if token == "-":
+                        continue
+                    anio = anios_actuales[i]
+                    rows.append(
+                        {
+                            "marca": marca_actual,
+                            "modelo": modelo_actual,
+                            "version": version,
+                            "anio": str(anio),
+                            "precio": token,
+                            "titulo": f"{marca_actual} {modelo_actual} {version}".strip(),
+                        }
+                    )
+                continue
+
+            if es_modelo_probable(linea):
+                modelo_actual = linea
+                version_buffer = []
+            else:
+                version_buffer.append(linea)
+
+    if not rows:
+        raise ValueError(
+            "No se pudieron extraer filas de precio del PDF. Revisa el formato de ACARA o compartime una muestra para ajustar el parser."
+        )
+
+    df = pd.DataFrame(rows)
+    df = _postprocesar(df)
+    return df[df["precio_num"].notna()].reset_index(drop=True)
+
+
+def cargar(origen_path: str) -> pd.DataFrame:
+    ext = Path(origen_path).suffix.lower()
+    if ext == ".csv":
+        return cargar_csv(origen_path)
+    if ext == ".pdf":
+        return cargar_pdf(origen_path)
+    raise ValueError("Formato no soportado. Usa .csv o .pdf")
 
 
 def render_top_section(total_vehiculos, total_filtrados, total_marcas, total_modelos, marcas, modelos, anios):
@@ -169,11 +331,6 @@ def armar_dashboard(df: pd.DataFrame, salida: str):
             "a{color:#2563eb;text-decoration:none;font-weight:600}a:hover{text-decoration:underline}"
             "#syncInfo{display:inline-block;padding-top:4px}"
             ".sync-updated{color:#8b9bb5;font-size:13px;font-weight:500}"
-            ".quote-panel{margin:6px 0 14px 0}"
-            ".quote-grid{display:grid;grid-template-columns:repeat(4,minmax(170px,1fr));gap:12px;align-items:end}"
-            ".quote-result{margin-top:12px;padding:12px 14px;border:1px solid #d8e3f1;border-radius:14px;background:#f8fbff}"
-            ".quote-result .k{font-size:12px;color:#64748b;text-transform:uppercase;letter-spacing:.08em;font-weight:700}"
-            ".quote-result .v{font-size:28px;font-weight:700;color:#0f172a;margin-top:6px}"
             "#marcas table,#anios table{font-size:12.5px}"
             "#tabla p{margin-bottom:0}"
             "</style>"
@@ -181,19 +338,6 @@ def armar_dashboard(df: pd.DataFrame, salida: str):
         f.write("</head><body><div class='shell'><main class='content'>")
         f.write("<h1>Strianese Usados</h1>")
         f.write(render_top_section(f"{len(df):,}", f"{len(df):,}", total_marcas, total_modelos, marcas, modelos, anios))
-
-        f.write(
-            "<div class='panel quote-panel'>"
-            "<h3 style='margin:0 0 10px 0'>Consulta de precio</h3>"
-            "<div class='quote-grid'>"
-            "<div><label>Marca</label><select id='pMarca'><option value=''>Seleccionar</option></select></div>"
-            "<div><label>Modelo</label><select id='pModelo'><option value=''>Seleccionar</option></select></div>"
-            "<div><label>Versión</label><select id='pVersion'><option value=''>Seleccionar</option></select></div>"
-            "<div><label>Año</label><select id='pAnio'><option value=''>Seleccionar</option></select></div>"
-            "</div>"
-            "<div class='quote-result'><div class='k'>Precio</div><div class='v' id='pPrecio'>-</div></div>"
-            "</div>"
-        )
 
         f.write(
             "<div class='grid'>"
@@ -260,81 +404,6 @@ function syncModelos(){
     modelos.sort((a,b)=>a.localeCompare(b,'es',{sensitivity:'base'}));
     modeloSelect.innerHTML = '<option value="">Todos</option>' + modelos.map(m => `<option>${m}</option>`).join('');
     if (actual && modelos.includes(actual)){ modeloSelect.value = actual; }
-}
-
-function uniqSorted(values){
-    return [...new Set(values.filter(v => String(v || '').trim() !== ''))]
-        .sort((a, b) => String(a).localeCompare(String(b), 'es', { sensitivity: 'base' }));
-}
-
-function setOptions(selectId, values){
-    const el = byId(selectId);
-    const prev = el.value;
-    el.innerHTML = '<option value="">Seleccionar</option>' + values.map(v => `<option>${v}</option>`).join('');
-    if (prev && values.includes(prev)){
-        el.value = prev;
-    }
-}
-
-function syncPrecioSelectors(){
-    const marca = byId('pMarca').value.trim().toLowerCase();
-    const modelo = byId('pModelo').value.trim().toLowerCase();
-    const version = byId('pVersion').value.trim().toLowerCase();
-
-    const marcas = uniqSorted(DATA.map(r => String(r.marca || '').trim()));
-    setOptions('pMarca', marcas);
-
-    const rowsMarca = !marca ? DATA : DATA.filter(r => String(r.marca || '').toLowerCase() === marca);
-    const modelos = uniqSorted(rowsMarca.map(r => String(r.modelo || '').trim()));
-    setOptions('pModelo', modelos);
-
-    const rowsModelo = !modelo ? rowsMarca : rowsMarca.filter(r => String(r.modelo || '').toLowerCase() === modelo);
-    const versiones = uniqSorted(rowsModelo.map(r => String(r.version || '').trim()));
-    setOptions('pVersion', versiones);
-
-    // Muestra años solo cuando hay combinación exacta marca + modelo + versión.
-    const rowsVersion = (marca && modelo && version)
-        ? rowsModelo.filter(r => String(r.version || '').toLowerCase() === version)
-        : [];
-    const anios = uniqSorted(rowsVersion.map(r => String(r.anio || '').trim()));
-    setOptions('pAnio', anios);
-}
-
-function renderPrecio(){
-    const marca = byId('pMarca').value.trim().toLowerCase();
-    const modelo = byId('pModelo').value.trim().toLowerCase();
-    const version = byId('pVersion').value.trim().toLowerCase();
-    const anio = byId('pAnio').value.trim();
-    const out = byId('pPrecio');
-
-    if (!marca || !modelo || !version || !anio){
-        out.textContent = '-';
-        return;
-    }
-
-    const rows = DATA.filter(r =>
-        String(r.marca || '').toLowerCase() === marca &&
-        String(r.modelo || '').toLowerCase() === modelo &&
-        String(r.version || '').toLowerCase() === version &&
-        String(r.anio || '').trim() === anio
-    );
-
-    const precios = rows
-        .map(r => Number(r.precio_num))
-        .filter(v => !Number.isNaN(v));
-
-    if (!precios.length){
-        out.textContent = 'Sin precio';
-        return;
-    }
-
-    const min = Math.min(...precios);
-    const max = Math.max(...precios);
-    if (min === max){
-        out.textContent = money(min);
-    } else {
-        out.textContent = `${money(min)} - ${money(max)}`;
-    }
 }
 
 function filtrar(){
@@ -434,8 +503,6 @@ function renderAll(){
     renderMarcas(rows);
     renderAnios(rows);
     renderTabla(rows);
-    syncPrecioSelectors();
-    renderPrecio();
 }
 
 byId('aplicar').addEventListener('click', renderAll);
@@ -457,12 +524,7 @@ byId('tabla').addEventListener('click', (ev) => {
 byId('fMarca').addEventListener('change', () => { syncModelos(); renderAll(); });
 byId('fModelo').addEventListener('change', renderAll);
 byId('fAnio').addEventListener('change', renderAll);
-byId('pMarca').addEventListener('change', () => { syncPrecioSelectors(); renderPrecio(); });
-byId('pModelo').addEventListener('change', () => { syncPrecioSelectors(); renderPrecio(); });
-byId('pVersion').addEventListener('change', () => { syncPrecioSelectors(); renderPrecio(); });
-byId('pAnio').addEventListener('change', renderPrecio);
 syncModelos();
-syncPrecioSelectors();
 renderAll();
 actualizarDatos(false);
 </script>
@@ -476,10 +538,10 @@ actualizarDatos(false);
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Genera un dashboard HTML a partir del CSV del scraper de vehículos")
-    parser.add_argument("csv", help="Archivo CSV generado por meli_vehiculos_scraper.py")
+    parser = argparse.ArgumentParser(description="Genera un dashboard HTML a partir de CSV o PDF")
+    parser.add_argument("origen", help="Archivo de entrada (.csv o .pdf)")
     parser.add_argument("--salida", default="dashboard.html", help="Nombre del archivo HTML de salida")
     args = parser.parse_args()
 
-    df = cargar(args.csv)
+    df = cargar(args.origen)
     armar_dashboard(df, args.salida)
