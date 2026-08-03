@@ -169,6 +169,11 @@ def armar_dashboard(df: pd.DataFrame, salida: str):
             "a{color:#2563eb;text-decoration:none;font-weight:600}a:hover{text-decoration:underline}"
             "#syncInfo{display:inline-block;padding-top:4px}"
             ".sync-updated{color:#8b9bb5;font-size:13px;font-weight:500}"
+            ".quote-panel{margin:6px 0 14px 0}"
+            ".quote-grid{display:grid;grid-template-columns:repeat(4,minmax(170px,1fr));gap:12px;align-items:end}"
+            ".quote-result{margin-top:12px;padding:12px 14px;border:1px solid #d8e3f1;border-radius:14px;background:#f8fbff}"
+            ".quote-result .k{font-size:12px;color:#64748b;text-transform:uppercase;letter-spacing:.08em;font-weight:700}"
+            ".quote-result .v{font-size:28px;font-weight:700;color:#0f172a;margin-top:6px}"
             "#marcas table,#anios table{font-size:12.5px}"
             "#tabla p{margin-bottom:0}"
             "</style>"
@@ -176,6 +181,19 @@ def armar_dashboard(df: pd.DataFrame, salida: str):
         f.write("</head><body><div class='shell'><main class='content'>")
         f.write("<h1>Strianese Usados</h1>")
         f.write(render_top_section(f"{len(df):,}", f"{len(df):,}", total_marcas, total_modelos, marcas, modelos, anios))
+
+        f.write(
+            "<div class='panel quote-panel'>"
+            "<h3 style='margin:0 0 10px 0'>Consulta de precio</h3>"
+            "<div class='quote-grid'>"
+            "<div><label>Marca</label><select id='pMarca'><option value=''>Seleccionar</option></select></div>"
+            "<div><label>Modelo</label><select id='pModelo'><option value=''>Seleccionar</option></select></div>"
+            "<div><label>Versión</label><select id='pVersion'><option value=''>Seleccionar</option></select></div>"
+            "<div><label>Año</label><select id='pAnio'><option value=''>Seleccionar</option></select></div>"
+            "</div>"
+            "<div class='quote-result'><div class='k'>Precio</div><div class='v' id='pPrecio'>-</div></div>"
+            "</div>"
+        )
 
         f.write(
             "<div class='grid'>"
@@ -242,6 +260,78 @@ function syncModelos(){
     modelos.sort((a,b)=>a.localeCompare(b,'es',{sensitivity:'base'}));
     modeloSelect.innerHTML = '<option value="">Todos</option>' + modelos.map(m => `<option>${m}</option>`).join('');
     if (actual && modelos.includes(actual)){ modeloSelect.value = actual; }
+}
+
+function uniqSorted(values){
+    return [...new Set(values.filter(v => String(v || '').trim() !== ''))]
+        .sort((a, b) => String(a).localeCompare(String(b), 'es', { sensitivity: 'base' }));
+}
+
+function setOptions(selectId, values){
+    const el = byId(selectId);
+    const prev = el.value;
+    el.innerHTML = '<option value="">Seleccionar</option>' + values.map(v => `<option>${v}</option>`).join('');
+    if (prev && values.includes(prev)){
+        el.value = prev;
+    }
+}
+
+function syncPrecioSelectors(){
+    const marca = byId('pMarca').value.trim().toLowerCase();
+    const modelo = byId('pModelo').value.trim().toLowerCase();
+    const version = byId('pVersion').value.trim().toLowerCase();
+
+    const marcas = uniqSorted(DATA.map(r => String(r.marca || '').trim()));
+    setOptions('pMarca', marcas);
+
+    const rowsMarca = !marca ? DATA : DATA.filter(r => String(r.marca || '').toLowerCase() === marca);
+    const modelos = uniqSorted(rowsMarca.map(r => String(r.modelo || '').trim()));
+    setOptions('pModelo', modelos);
+
+    const rowsModelo = !modelo ? rowsMarca : rowsMarca.filter(r => String(r.modelo || '').toLowerCase() === modelo);
+    const versiones = uniqSorted(rowsModelo.map(r => String(r.version || '').trim()));
+    setOptions('pVersion', versiones);
+
+    const rowsVersion = !version ? rowsModelo : rowsModelo.filter(r => String(r.version || '').toLowerCase() === version);
+    const anios = uniqSorted(rowsVersion.map(r => String(r.anio || '').trim()));
+    setOptions('pAnio', anios);
+}
+
+function renderPrecio(){
+    const marca = byId('pMarca').value.trim().toLowerCase();
+    const modelo = byId('pModelo').value.trim().toLowerCase();
+    const version = byId('pVersion').value.trim().toLowerCase();
+    const anio = byId('pAnio').value.trim();
+    const out = byId('pPrecio');
+
+    if (!marca || !modelo || !version || !anio){
+        out.textContent = '-';
+        return;
+    }
+
+    const rows = DATA.filter(r =>
+        String(r.marca || '').toLowerCase() === marca &&
+        String(r.modelo || '').toLowerCase() === modelo &&
+        String(r.version || '').toLowerCase() === version &&
+        String(r.anio || '').trim() === anio
+    );
+
+    const precios = rows
+        .map(r => Number(r.precio_num))
+        .filter(v => !Number.isNaN(v));
+
+    if (!precios.length){
+        out.textContent = 'Sin precio';
+        return;
+    }
+
+    const min = Math.min(...precios);
+    const max = Math.max(...precios);
+    if (min === max){
+        out.textContent = money(min);
+    } else {
+        out.textContent = `${money(min)} - ${money(max)}`;
+    }
 }
 
 function filtrar(){
@@ -341,6 +431,8 @@ function renderAll(){
     renderMarcas(rows);
     renderAnios(rows);
     renderTabla(rows);
+    syncPrecioSelectors();
+    renderPrecio();
 }
 
 byId('aplicar').addEventListener('click', renderAll);
@@ -362,7 +454,12 @@ byId('tabla').addEventListener('click', (ev) => {
 byId('fMarca').addEventListener('change', () => { syncModelos(); renderAll(); });
 byId('fModelo').addEventListener('change', renderAll);
 byId('fAnio').addEventListener('change', renderAll);
+byId('pMarca').addEventListener('change', () => { syncPrecioSelectors(); renderPrecio(); });
+byId('pModelo').addEventListener('change', () => { syncPrecioSelectors(); renderPrecio(); });
+byId('pVersion').addEventListener('change', () => { syncPrecioSelectors(); renderPrecio(); });
+byId('pAnio').addEventListener('change', renderPrecio);
 syncModelos();
+syncPrecioSelectors();
 renderAll();
 actualizarDatos(false);
 </script>
