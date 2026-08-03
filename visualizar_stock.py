@@ -173,7 +173,7 @@ def armar_dashboard(df: pd.DataFrame, salida: str):
             "</style>"
         )
         f.write("</head><body><div class='shell'><main class='content'>")
-        f.write(f"<h1>Dashboard de stock</h1><p class='sub'>Panel limpio para revisar inventario, ordenar y filtrar rápido sin ruido visual</p>")
+        f.write("<h1>Strianese Usados</h1>")
         f.write(render_top_section(f"{len(df):,}", total_marcas, total_modelos, marcas, modelos, anios))
 
         f.write(
