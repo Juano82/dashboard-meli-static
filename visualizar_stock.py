@@ -93,9 +93,9 @@ def armar_dashboard(df: pd.DataFrame, salida: str):
             ".hero-card{border-radius:24px;padding:22px;border:1px solid #d7e3f3;background:linear-gradient(135deg,#ffffff 0,#eff6ff 100%);box-shadow:var(--shadow);position:relative;overflow:hidden}"
             ".hero-card:after{content:'';position:absolute;inset:auto -60px -70px auto;width:180px;height:180px;border-radius:50%;background:radial-gradient(circle,#38bdf822,#0000 70%)}"
             ".hero-card h3{margin:0;font-size:12px;color:#3b82f6;font-weight:700;letter-spacing:.12em;text-transform:uppercase}"
-            ".hero-card .v{margin-top:10px;font-size:42px;font-weight:700;letter-spacing:-.05em;color:#0f172a}"
+            ".hero-card .v{margin-top:10px;font-size:clamp(56px,6vw,78px);font-weight:700;line-height:.9;letter-spacing:-.06em;color:#0f172a}"
             ".mini{background:linear-gradient(180deg,#ffffff 0,#f8fbff 100%);border:1px solid #d8e3f1;border-radius:22px;padding:18px;box-shadow:var(--shadow);min-height:100%}"
-            ".mini .k{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.1em}.mini .v{font-size:30px;font-weight:700;margin-top:8px;color:#0f172a}"
+            ".mini .k{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.1em}.mini .v{font-size:clamp(44px,4.8vw,62px);font-weight:700;line-height:.92;margin-top:8px;color:#0f172a}"
             ".panel{background:linear-gradient(180deg,#ffffff 0,#fbfdff 100%);border:1px solid var(--line);border-radius:22px;padding:18px;margin-bottom:16px;box-shadow:var(--shadow)}"
             ".filters-panel{margin-bottom:0;padding:0}"
             ".filters-shell{display:grid;grid-template-columns:minmax(0,1fr) 160px;gap:18px;align-items:start;padding:18px}"
@@ -113,7 +113,7 @@ def armar_dashboard(df: pd.DataFrame, salida: str):
             ".kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px;margin:14px 0 0 0}"
             ".kpi{background:linear-gradient(180deg,#ffffff 0,#f8fbff 100%);border:1px solid #d8e3f1;border-radius:18px;padding:14px 16px;box-shadow:var(--shadow)}"
             ".kpi .t{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;font-weight:700}"
-            ".kpi .v{font-size:28px;font-weight:700;margin-top:8px;color:#081120}"
+            ".kpi .v{font-size:clamp(42px,5vw,58px);font-weight:700;line-height:.92;margin-top:8px;color:#081120}"
             ".grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}"
             "@media(max-width:1180px){body{padding:18px}.top-band{grid-template-columns:1fr}.hero{grid-template-columns:1fr 1fr 1fr}.grid{grid-template-columns:1fr}.filters-shell{grid-template-columns:1fr}.filters-actions{grid-template-columns:1fr 1fr 1fr;padding-top:0}}"
             ".chart{height:360px}"
@@ -128,6 +128,7 @@ def armar_dashboard(df: pd.DataFrame, salida: str):
             ".sort-btn{border:0;background:transparent;cursor:pointer;color:#2563eb;padding:0 2px;font-size:10px;height:10px}"
             "a{color:#2563eb;text-decoration:none;font-weight:600}a:hover{text-decoration:underline}"
             "#syncInfo{display:inline-block;padding-top:4px}"
+            ".sync-updated{color:#8b9bb5;font-size:13px;font-weight:500}"
             "#marcas table,#anios table{font-size:12.5px}"
             "#tabla p{margin-bottom:0}"
             "</style>"
@@ -160,7 +161,7 @@ def armar_dashboard(df: pd.DataFrame, salida: str):
             "<div><button class='btn' id='aplicar'>Aplicar filtros</button></div>"
             "<div><button class='btn' id='actualizar'>Actualizar datos</button></div>"
             "<div><button class='btn alt' id='limpiar'>Limpiar</button></div>"
-            "<div><small id='syncInfo' style='color:#9ca8c9'>Fuente: snapshot local</small></div>"
+            "<div><small id='syncInfo' class='sync-updated'>actualizado</small></div>"
             "</div></div></div>"
         )
 
@@ -171,11 +172,11 @@ def armar_dashboard(df: pd.DataFrame, salida: str):
         )
 
         f.write(
+            "<div class='panel'><h3 style='margin-top:0'>Detalle filtrado</h3><div id='tabla'></div></div>"
             "<div class='grid'>"
             "<div class='panel'><h3 style='margin:0 0 10px 0'>Unidades por marca</h3><div id='marcas'></div></div>"
             "<div class='panel'><h3 style='margin:0 0 10px 0'>Unidades por año</h3><div id='anios'></div></div>"
             "</div>"
-            "<div class='panel'><h3 style='margin-top:0'>Detalle filtrado</h3><div id='tabla'></div></div>"
         )
 
         js = """
@@ -187,6 +188,12 @@ const fmt = n => (n===null || n===undefined || n==='' || Number.isNaN(Number(n))
 const money = n => (n===null || n===undefined || n==='' || Number.isNaN(Number(n))) ? '$ -' : '$ ' + Number(n).toLocaleString('es-AR');
 const byId = id => document.getElementById(id);
 const sortState = { col: '', dir: 'asc' };
+
+function formatActualizado(date){
+    const fecha = date.toLocaleDateString('es-AR');
+    const hora = date.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit', hour12: false });
+    return `actualizado ${fecha}, ${hora}`;
+}
 
 function setSyncInfo(msg){
     const el = byId('syncInfo');
@@ -203,13 +210,13 @@ async function actualizarDatos(showAlert = true){
         syncModelos();
         renderAll();
         const stamp = new Date().toLocaleString('es-AR');
-        setSyncInfo(`Fuente: ${DATA_FILE} | actualizado ${stamp}`);
+        setSyncInfo(formatActualizado(new Date()));
         if (showAlert){ alert('Datos actualizados correctamente.'); }
     } catch (err) {
         DATA = [...EMBEDDED_DATA];
         syncModelos();
         renderAll();
-        setSyncInfo('Fuente: snapshot local (sin acceso a archivo externo)');
+        setSyncInfo(formatActualizado(new Date()));
         if (showAlert){
             alert('No se pudo leer el archivo de datos externo. Si abrís el HTML con doble clic, usá un servidor local (python -m http.server) para actualizar sin regenerar.');
         }
