@@ -46,7 +46,7 @@ def cargar(csv_path: str) -> pd.DataFrame:
     return df
 
 
-def render_top_section(total_vehiculos, total_marcas, total_modelos, marcas, modelos, anios):
+def render_top_section(total_vehiculos, total_filtrados, total_marcas, total_modelos, marcas, modelos, anios):
         template = Template(
                 """
 <section class='top-band'>
@@ -54,7 +54,7 @@ def render_top_section(total_vehiculos, total_marcas, total_modelos, marcas, mod
         <div class='hero-card'><h3>Vehículos cargados</h3><div class='v'>{{ total_vehiculos }}</div></div>
         <div class='mini'><div class='k'>Marcas</div><div class='v'>{{ total_marcas }}</div></div>
         <div class='mini'><div class='k'>Modelos</div><div class='v'>{{ total_modelos }}</div></div>
-    <div class='mini'><div class='k'>Vehículos filtrados</div><div class='v' id='kpiTotal'>0</div></div>
+    <div class='mini'><div class='k'>Vehículos filtrados</div><div class='v' id='kpiTotal'>{{ total_filtrados }}</div></div>
     </div>
     <div class='panel filters-panel'>
         <div class='filters-shell'>
@@ -76,6 +76,7 @@ def render_top_section(total_vehiculos, total_marcas, total_modelos, marcas, mod
         )
         return template.render(
                 total_vehiculos=total_vehiculos,
+                total_filtrados=total_filtrados,
                 total_marcas=total_marcas,
                 total_modelos=total_modelos,
                 marcas=marcas,
@@ -174,7 +175,7 @@ def armar_dashboard(df: pd.DataFrame, salida: str):
         )
         f.write("</head><body><div class='shell'><main class='content'>")
         f.write("<h1>Strianese Usados</h1>")
-        f.write(render_top_section(f"{len(df):,}", total_marcas, total_modelos, marcas, modelos, anios))
+        f.write(render_top_section(f"{len(df):,}", f"{len(df):,}", total_marcas, total_modelos, marcas, modelos, anios))
 
         f.write(
             "<div class='grid'>"
