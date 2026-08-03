@@ -292,7 +292,10 @@ function syncPrecioSelectors(){
     const versiones = uniqSorted(rowsModelo.map(r => String(r.version || '').trim()));
     setOptions('pVersion', versiones);
 
-    const rowsVersion = !version ? rowsModelo : rowsModelo.filter(r => String(r.version || '').toLowerCase() === version);
+    // Muestra años solo cuando hay combinación exacta marca + modelo + versión.
+    const rowsVersion = (marca && modelo && version)
+        ? rowsModelo.filter(r => String(r.version || '').toLowerCase() === version)
+        : [];
     const anios = uniqSorted(rowsVersion.map(r => String(r.anio || '').trim()));
     setOptions('pAnio', anios);
 }
