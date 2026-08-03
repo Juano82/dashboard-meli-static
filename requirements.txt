@@ -1,4 +1,5 @@
 pandas
 plotly
+Jinja2
 requests
 beautifulsoup4

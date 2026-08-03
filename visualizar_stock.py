@@ -18,6 +18,7 @@ import json
 from pathlib import Path
 import re
 
+from jinja2 import Template
 import pandas as pd
 
 
@@ -43,6 +44,43 @@ def cargar(csv_path: str) -> pd.DataFrame:
     df["kms_num"] = df["kms"].apply(limpiar_numero)
     df["anio_num"] = pd.to_numeric(df["anio"], errors="coerce")
     return df
+
+
+def render_top_section(total_vehiculos, total_marcas, total_modelos, marcas, modelos, anios):
+        template = Template(
+                """
+<section class='top-band'>
+    <div class='hero'>
+        <div class='hero-card'><h3>Vehículos cargados</h3><div class='v'>{{ total_vehiculos }}</div></div>
+        <div class='mini'><div class='k'>Marcas</div><div class='v'>{{ total_marcas }}</div></div>
+        <div class='mini'><div class='k'>Modelos</div><div class='v'>{{ total_modelos }}</div></div>
+    </div>
+    <div class='panel filters-panel'>
+        <div class='filters-shell'>
+            <div class='filters-fields'>
+                <div><label>Marca</label><select id='fMarca'><option value=''>Todas</option>{% for marca in marcas %}<option>{{ marca }}</option>{% endfor %}</select></div>
+                <div><label>Modelo</label><select id='fModelo'><option value=''>Todos</option>{% for modelo in modelos %}<option>{{ modelo }}</option>{% endfor %}</select></div>
+                <div><label>Año</label><select id='fAnio'><option value=''>Todos</option>{% for anio in anios %}<option>{{ anio }}</option>{% endfor %}</select></div>
+            </div>
+            <div class='filters-actions'>
+                <div><button class='btn' id='aplicar'>Aplicar filtros</button></div>
+                <div><button class='btn' id='actualizar'>Actualizar datos</button></div>
+                <div><button class='btn alt' id='limpiar'>Limpiar</button></div>
+                <div><small id='syncInfo' class='sync-updated'>actualizado</small></div>
+            </div>
+        </div>
+    </div>
+</section>
+"""
+        )
+        return template.render(
+                total_vehiculos=total_vehiculos,
+                total_marcas=total_marcas,
+                total_modelos=total_modelos,
+                marcas=marcas,
+                modelos=modelos,
+                anios=anios,
+        )
 
 
 def armar_dashboard(df: pd.DataFrame, salida: str):
@@ -135,35 +173,7 @@ def armar_dashboard(df: pd.DataFrame, salida: str):
         )
         f.write("</head><body><div class='shell'><main class='content'>")
         f.write(f"<h1>Dashboard de stock</h1><p class='sub'>Panel limpio para revisar inventario, ordenar y filtrar rápido sin ruido visual</p>")
-        f.write(
-            "<section class='top-band'>"
-            "<div class='hero'>"
-            f"<div class='hero-card'><h3>Vehículos cargados</h3><div class='v'>{len(df):,}</div></div>"
-            f"<div class='mini'><div class='k'>Marcas</div><div class='v'>{total_marcas}</div></div>"
-            f"<div class='mini'><div class='k'>Modelos</div><div class='v'>{total_modelos}</div></div>"
-            "</div>"
-            "<div class='panel filters-panel'><div class='filters-shell'><div class='filters-fields'>"
-            "<div><label>Marca</label><select id='fMarca'><option value=''>Todas</option>"
-        )
-        for marca in marcas:
-            f.write(f"<option>{marca}</option>")
-        f.write("</select></div>")
-        f.write("<div><label>Modelo</label><select id='fModelo'><option value=''>Todos</option>")
-        for modelo in modelos:
-            f.write(f"<option>{modelo}</option>")
-        f.write("</select></div>")
-        f.write("<div><label>Año</label><select id='fAnio'><option value=''>Todos</option>")
-        for anio in anios:
-            f.write(f"<option>{anio}</option>")
-        f.write("</select></div>")
-        f.write(
-            "</div><div class='filters-actions'>"
-            "<div><button class='btn' id='aplicar'>Aplicar filtros</button></div>"
-            "<div><button class='btn' id='actualizar'>Actualizar datos</button></div>"
-            "<div><button class='btn alt' id='limpiar'>Limpiar</button></div>"
-            "<div><small id='syncInfo' class='sync-updated'>actualizado</small></div>"
-            "</div></div></div>"
-        )
+        f.write(render_top_section(f"{len(df):,}", total_marcas, total_modelos, marcas, modelos, anios))
 
         f.write(
             "<div class='kpis'>"
